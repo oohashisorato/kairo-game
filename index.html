@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>簡単電気回路ゲーム</title>
+<style>
+  body { font-family:sans-serif; text-align:center; padding:20px; }
+  .grid { display:grid; margin:20px auto; }
+  .cell { width:60px; height:60px; border:1px solid #333; display:flex; justify-content:center; align-items:center; font-size:24px; cursor:pointer; }
+  #parts { margin:20px; }
+  button { font-size:16px; margin:5px; padding:5px 10px; }
+</style>
+</head>
+<body>
+
+<h1>🔌 電気回路ゲーム</h1>
+<div id="question">パーツを置いて、スイッチから電球までつなげよう！</div>
+
+<div id="parts">
+  <button onclick="selectPart('─')">横線 ─</button>
+  <button onclick="selectPart('│')">縦線 │</button>
+  <button onclick="selectPart('┌')">┌</button>
+  <button onclick="selectPart('┐')">┐</button>
+  <button onclick="selectPart('└')">└</button>
+  <button onclick="selectPart('┘')">┘</button>
+  <button onclick="selectPart('┼')">十字 ┼</button>
+</div>
+
+<div id="grid" class="grid"></div>
+
+<button onclick="checkGoal()">チェック</button>
+<button onclick="resetGrid()">リセット</button>
+
+<h2 id="result"></h2>
+
+<script>
+let rows = 7, cols = 5; 
+let selectedPart = '─';
+let gridData = Array(rows).fill().map(()=>Array(cols).fill(''));
+const gridEl = document.getElementById('grid');
+gridEl.style.gridTemplateColumns = `repeat(${cols},60px)`;
+
+// 電球位置
+let bulb1 = {r: rows-1, c: cols-1};
+let bulb2 = {r: rows-1, c:0};
+
+// 初期化
+function initGrid(){
+  gridEl.innerHTML = '';
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      if(r===0 && c===0) cell.textContent = '🔲'; // スイッチ
+      else if(r===bulb1.r && c===bulb1.c) cell.textContent = '💡'; // 電球1
+      else if(r===bulb2.r && c===bulb2.c) cell.textContent = '💡'; // 電球2
+      cell.addEventListener('click', ()=>placePart(r,c,cell));
+      gridEl.appendChild(cell);
+    }
+  }
+}
+initGrid();
+
+// パーツ選択
+function selectPart(part){ selectedPart = part; }
+
+function placePart(r,c,cell){
+  if(r===0 && c===0) return;
+  if((r===bulb1.r && c===bulb1.c)||(r===bulb2.r && c===bulb2.c)) return;
+  gridData[r][c] = selectedPart;
+  cell.textContent = selectedPart;
+}
+
+// 接続判定用
+const directions = {
+  '─': [[0,-1],[0,1]],
+  '│': [[-1,0],[1,0]],
+  '┌': [[0,1],[1,0]],
+  '┐': [[0,-1],[1,0]],
+  '└': [[0,1],[-1,0]],
+  '┘': [[0,-1],[-1,0]],
+  '┼': [[-1,0],[1,0],[0,-1],[0,1]]
+};
+
+// ゴール判定
+function checkGoal(){
+  const visited = Array(rows).fill().map(()=>Array(cols).fill(false));
+  let reached1 = false, reached2 = false;
+
+  function dfs(r,c){
+    if(r<0||r>=rows||c<0||c>=cols) return;
+    if(visited[r][c]) return;
+
+    visited[r][c]=true;
+
+    // 電球到達
+    if(r===bulb1.r && c===bulb1.c) reached1=true;
+    if(r===bulb2.r && c===bulb2.c) reached2=true;
+
+    const part = (r===0 && c===0)?'┼':gridData[r][c];
+    if(!part) return;
+
+    for(let [dr,dc] of directions[part]){
+      let nr = r+dr, nc = c+dc;
+      dfs(nr,nc);
+    }
+  }
+
+  dfs(0,0);
+
+  if(reached1 && reached2){
+    document.getElementById('result').textContent = '🎉 ゴール！';
+    randomizeBulbs();
+  }else{
+    document.getElementById('result').textContent = '残念！';
+  }
+}
+
+// ランダムで電球位置変更
+function randomizeBulbs(){
+  const positions = [];
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      if(!(r===0 && c===0)) positions.push({r,c});
+    }
+  }
+  // ランダムに2つ選択
+  const idx1 = Math.floor(Math.random()*positions.length);
+  let idx2;
+  do{
+    idx2 = Math.floor(Math.random()*positions.length);
+  }while(idx2===idx1);
+
+  bulb1 = positions[idx1];
+  bulb2 = positions[idx2];
+  initGrid();
+}
+
+// リセット
+function resetGrid(){
+  gridData = Array(rows).fill().map(()=>Array(cols).fill(''));
+  bulb1 = {r: rows-1, c: cols-1};
+  bulb2 = {r: rows-1, c:0};
+  initGrid();
+  document.getElementById('result').textContent='';
+}
+</script>
+
+</body>
+</html>
